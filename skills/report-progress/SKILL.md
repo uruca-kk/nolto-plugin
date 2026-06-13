@@ -78,6 +78,21 @@ planId や phaseId が手元にない場合は以下の手順で取得します:
 | 状態遷移エラー | サーバーから返ったエラーメッセージをそのままユーザーに表示します。 |
 | 無効な verdict / status | 上記の有効値一覧を確認し、正しい値でリトライします。 |
 
+## キュー版 (オプトイン)
+
+セッション終了時にまとめて送りたい場合は、ダイレクト呼び出しの代わりに `nolto queue` コマンドを使ってください:
+
+```
+nolto queue phase-status <planId> <phaseId> in_progress
+nolto queue phase-test <planId> <phaseId> passed --round 1
+nolto queue plan-status <planId> done
+nolto queue plan-review <planId> go
+```
+
+キューに追記された内容はセッション終了時の Stop フックが `nolto flush --detach` で自動送信します（`@nolto/cli >= 0.2.0` + `NOLTO_TOKEN` が必要）。
+
+**注意**: ダイレクト呼び出しとキュー版を**同じ更新に対して両方使わないでください**（二重送信になります）。`entry.id` による サーバー側の重複排除は現バージョンのスコープ外です。
+
 ## 関連スキル
 
 - **register-plan** — フェーズを含むプランを初めて登録するときに使います。

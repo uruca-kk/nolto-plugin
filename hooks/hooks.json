@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "nolto flush --detach",
+        "timeout": 10,
+        "allowedEnvVars": ["NOLTO_TOKEN", "NOLTO_BASE_URL", "NOLTO_PROJECT", "CLAUDE_PROJECT_DIR", "NOLTO_QUEUE_DIR"]
+      }
+    ]
+  }
+}
