@@ -32,6 +32,41 @@ function readRepo(rel) {
   catch { fail(abs, "Not found (needed for literal-drift check)"); return null; }
 }
 
+// --- templates --------------------------------------------------------------
+
+const PLAN_CONTENT_MAX = 50_000;
+const CANON_JP = ["未着手", "進行中", "完了", "破棄"];
+
+function checkTemplates() {
+  const tmplDir = pp("templates");
+  const planTmpl = join(tmplDir, "plan-template.md");
+  const claudeSample = join(tmplDir, "CLAUDE.md.sample");
+
+  let raw;
+  try { raw = readFileSync(planTmpl, "utf8"); } catch { fail(planTmpl, "File not found"); return; }
+  if (!raw.trim().length) { fail(planTmpl, "empty"); return; }
+  const byteLen = Buffer.byteLength(raw, "utf8");
+  if (byteLen >= PLAN_CONTENT_MAX) fail(planTmpl, `exceeds PLAN_CONTENT_MAX: ${byteLen} bytes (max ${PLAN_CONTENT_MAX - 1})`);
+
+  // JP status-label hygiene: pipe-table cells of 2–4 JP chars must be canonical.
+  // Strip HTML comments first to avoid matching documentation tables inside <!-- -->.
+  const rawNoComments = raw.replace(/<!--[\s\S]*?-->/g, "");
+  for (const [, cell] of rawNoComments.matchAll(/\|\s*([^\|]{2,4})\s*\|/g)) {
+    const t = cell.trim();
+    if (/^[　-鿿豈-﫿]{2,4}$/.test(t) && !CANON_JP.includes(t))
+      fail(planTmpl, `Non-canonical JP status label "${t}" in table. Valid: ${CANON_JP.join(", ")}`);
+  }
+
+  // Marker-family presence (use comment-stripped string — same as JP-label check above)
+  if (!/(✅|完了|済)/.test(rawNoComments)) fail(planTmpl, 'Missing done-family marker (✅ / 完了 / 済)');
+  if (!/進行中|着手/.test(rawNoComments)) fail(planTmpl, 'Missing in_progress-family marker (進行中 / 着手)');
+  if (!/- \[ \]/.test(rawNoComments)) fail(planTmpl, 'Missing not_started example (- [ ])');
+
+  let sampleRaw;
+  try { sampleRaw = readFileSync(claudeSample, "utf8"); } catch { fail(claudeSample, "File not found"); return; }
+  if (!sampleRaw.trim().length) fail(claudeSample, "empty");
+}
+
 // --- canonical literal extraction -------------------------------------------
 
 const arrRe = (name) => new RegExp(`export\\s+const\\s+${name}\\s*=\\s*\\[([^\\]]+)\\]`, "s");
@@ -73,7 +108,7 @@ function checkPlugin() {
   if (!/^[a-z][a-z0-9-]*$/.test(d.name)) fail(f, `name must be kebab-case, got: ${JSON.stringify(d.name)}`);
   else if (d.name !== "nolto") fail(f, `name must be "nolto", got: "${d.name}"`);
   if (!/^\d+\.\d+\.\d+$/.test(d.version)) fail(f, `version must be semver, got: ${JSON.stringify(d.version)}`);
-  if (d.version !== "0.2.0") fail(f, `version must be "0.2.0", got: "${d.version}"`);
+  if (d.version !== "0.2.1") fail(f, `version must be "0.2.1", got: "${d.version}"`);
   for (const k of ["displayName", "description", "homepage", "repository", "license"])
     if (typeof d[k] !== "string" || !d[k]) fail(f, `${k} must be a non-empty string`);
   if (!d.author || typeof d.author !== "object") fail(f, "author must be an object");
@@ -99,7 +134,7 @@ function checkMarketplace() {
   const e = d.plugins[0];
   if (e.name !== "nolto") fail(f, `plugins[0].name must be "nolto"`);
   if (e.source !== "./") fail(f, `plugins[0].source must be "./"`);
-  if (e.version !== "0.2.0") fail(f, `plugins[0].version must be "0.2.0"`);
+  if (e.version !== "0.2.1") fail(f, `plugins[0].version must be "0.2.1"`);
   if (!e.description) fail(f, "plugins[0].description must be non-empty");
 }
 
@@ -241,6 +276,7 @@ checkPlugin();
 checkMarketplace();
 checkMcp();
 checkHooks();
+checkTemplates();
 const canonicals = loadCanonicals();
 if (canonicals) checkJpStatusLabels(canonicals);
 checkSkills(canonicals);
@@ -251,6 +287,6 @@ if (errors.length) {
   process.exit(1);
 } else {
   const n = (() => { try { return readdirSync(pp("skills"), { withFileTypes: true }).filter((d) => d.isDirectory()).length; } catch { return 0; } })();
-  process.stdout.write(`OK    plugin.json / marketplace.json / .mcp.json / ${n} skills — all checks passed.\n`);
+  process.stdout.write(`OK    plugin.json / marketplace.json / .mcp.json / templates / ${n} skills — all checks passed.\n`);
   process.exit(0);
 }

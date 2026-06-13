@@ -6,7 +6,7 @@
       "name": "nolto",
       "source": "./",
       "description": "Hosted MCP server + skills for registering and tracking Nolto plans from Claude Code.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "project-management",
       "keywords": ["nolto", "mcp", "plan-management"]
     }
