@@ -1,0 +1,68 @@
+---
+name: register-plan
+description: Use when the user asks to register a plan in Nolto, share a plan, or push a plan markdown file from this repo to Nolto. Reads a local plan markdown, derives title and phases, and calls the register_plan MCP tool.
+---
+
+## このスキルを使う状況
+
+ユーザーが「このプランを Nolto に登録して」「plan.md を Nolto に送って」「Nolto でプロジェクトにプランを追加して」と依頼したとき、このスキルが起動します。ローカルのマークダウンファイルを読み込み、タイトルとフェーズを抽出して `mcp__nolto__register_plan` を呼び出します。
+
+## 手順
+
+### 1. ファイルを読み込む
+
+ユーザーが指定したパス（例: `implementation_plan.md`、`docs/plan.md`）のファイルを Read ツールで開きます。パスが指定されていない場合はカレントディレクトリにある `*plan*.md` や `*PLAN*.md` を提案してください。
+
+### 2. タイトルとフェーズを抽出する
+
+- **タイトル**: 最初の `# ` 見出し（H1）をプランタイトルとして使います（最大 500 文字 = `PLAN_TITLE_MAX`）。H1 がなければファイル名（拡張子除く）をタイトルにします。
+- **フェーズ**: `## ` 見出し（H2）を各フェーズとして扱います。H2 見出しをタイトル（最大 500 文字 = `PHASE_TITLE_MAX`）、その下の本文をコンテンツ（最大 20,000 文字 = `PHASE_CONTENT_MAX`）として切り出します。フェーズ数の上限は 50（`PHASES_MAX`）です。50 を超える場合はユーザーに確認してから絞り込みます。
+- **ステータス**: 指定がなければ `not_started` で登録します。ステータスは `not_started` / `in_progress` / `done` / `discarded` の 4 値のみ有効です。
+
+### 3. projectId を確認する
+
+`mcp__nolto__register_plan` には `projectId` が必要です。ただし、デフォルトプロジェクトが設定済みの場合は `projectId` を省略できます。
+
+- **デフォルト設定済みの場合**: `projectId` なしで `register_plan` を呼び出せます。手順 4 へ進んでください。
+- **デフォルト未設定の場合（または確認したい場合）**: `mcp__nolto__list_projects` でプロジェクト一覧を取得し、どのプロジェクトに登録するかユーザーに選んでもらい、選択したプロジェクトの UUID を `projectId` として渡します。
+- **サーバーが `projectId required / no default project` エラーを返した場合**: `mcp__nolto__list_projects` を呼んで一覧を示し、再試行します。
+- **将来の呼び出しでデフォルトを固定したい場合**: ユーザーが「デフォルトプロジェクトを設定したい」と明示したときのみ `mcp__nolto__set_default_project` を使います（プロジェクト UUID が必要です）。
+
+### 4. register_plan を呼び出す
+
+```
+mcp__nolto__register_plan({
+  projectId: "<uuid>",
+  title: "<H1 テキスト>",
+  content: "<ファイル全文>",
+  phases: [
+    { title: "<H2 テキスト>", content: "<本文>", status: "not_started" },
+    ...
+  ],
+  status: "not_started"
+})
+```
+
+### 5. 結果を報告する
+
+レスポンスから以下を日本語でユーザーに伝えます:
+
+- `planId` — 登録されたプランの ID
+- `transformStatus` — LLM 変換キューの状態（`queued` / `processing` / `completed` / `failed`）
+- `url` — プラン詳細ページの URL（`https://nolto.app/...`）
+
+例: 「プランを登録しました。planId: `abc-123`。Nolto ダッシュボードで確認できます: https://nolto.app/projects/…」
+
+## エラー処理
+
+| エラー | 対処 |
+|--------|------|
+| `401 Unauthorized` | OAuth トークンが切れています。`claude mcp add --transport http nolto https://nolto.app/mcp` で再認証を促してください。 |
+| `429 Too Many Requests` | `Retry-After` ヘッダーの秒数だけ待ってから再試行します。 |
+| バリデーションエラー | どのフィールドが上限を超えたか（タイトル 500 文字超、フェーズ数 50 超など）を明示してユーザーに確認します。 |
+| projectId 未指定 | `list_projects` を呼んで一覧を示し、選択を求めます。 |
+
+## 関連スキル
+
+- **report-progress** — 登録後にフェーズのステータスやテスト結果を更新するときに使います。
+- **plan-status** — プランの進捗を非エンジニア向けに要約するときに使います。
