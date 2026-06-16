@@ -108,7 +108,7 @@ function checkPlugin() {
   if (!/^[a-z][a-z0-9-]*$/.test(d.name)) fail(f, `name must be kebab-case, got: ${JSON.stringify(d.name)}`);
   else if (d.name !== "nolto") fail(f, `name must be "nolto", got: "${d.name}"`);
   if (!/^\d+\.\d+\.\d+$/.test(d.version)) fail(f, `version must be semver, got: ${JSON.stringify(d.version)}`);
-  if (d.version !== "0.2.2") fail(f, `version must be "0.2.2", got: "${d.version}"`);
+  if (d.version !== "0.2.3") fail(f, `version must be "0.2.3", got: "${d.version}"`);
   for (const k of ["displayName", "description", "homepage", "repository", "license"])
     if (typeof d[k] !== "string" || !d[k]) fail(f, `${k} must be a non-empty string`);
   if (!d.author || typeof d.author !== "object") fail(f, "author must be an object");
@@ -134,7 +134,7 @@ function checkMarketplace() {
   const e = d.plugins[0];
   if (e.name !== "nolto") fail(f, `plugins[0].name must be "nolto"`);
   if (e.source !== "./") fail(f, `plugins[0].source must be "./"`);
-  if (e.version !== "0.2.2") fail(f, `plugins[0].version must be "0.2.2"`);
+  if (e.version !== "0.2.3") fail(f, `plugins[0].version must be "0.2.3"`);
   if (!e.description) fail(f, "plugins[0].description must be non-empty");
 }
 
@@ -253,19 +253,28 @@ function checkHooks() {
     fail(abs, "hooks.Stop must be a non-empty array");
     return;
   }
+  // Claude Code schema: each Stop entry is a matcher-group with a nested `hooks` array
+  // (NOT a flat command entry). The old flat form failed to load ("expected array,
+  // received undefined" at hooks.Stop[0].hooks).
   for (let i = 0; i < stopArr.length; i++) {
-    const entry = stopArr[i];
-    if (!entry || typeof entry !== "object") { fail(abs, `hooks.Stop[${i}] must be an object`); continue; }
-    if (entry.type !== "command") fail(abs, `hooks.Stop[${i}].type must be "command", got: ${JSON.stringify(entry.type)}`);
-    if (typeof entry.command !== "string" || !entry.command) fail(abs, `hooks.Stop[${i}].command must be a non-empty string`);
-    else if (!entry.command.includes("nolto")) fail(abs, `hooks.Stop[${i}].command must reference "nolto", got: ${JSON.stringify(entry.command)}`);
-    if (entry.timeout !== undefined && (typeof entry.timeout !== "number" || entry.timeout <= 0))
-      fail(abs, `hooks.Stop[${i}].timeout must be a positive number`);
-    if (entry.allowedEnvVars !== undefined && !Array.isArray(entry.allowedEnvVars))
-      fail(abs, `hooks.Stop[${i}].allowedEnvVars must be an array`);
-    else if (Array.isArray(entry.allowedEnvVars)) {
-      for (const v of entry.allowedEnvVars)
-        if (typeof v !== "string") fail(abs, `hooks.Stop[${i}].allowedEnvVars entries must be strings`);
+    const group = stopArr[i];
+    if (!group || typeof group !== "object") { fail(abs, `hooks.Stop[${i}] must be an object`); continue; }
+    const inner = group.hooks;
+    if (!Array.isArray(inner) || inner.length === 0) {
+      fail(abs, `hooks.Stop[${i}].hooks must be a non-empty array (nested matcher-group form)`);
+      continue;
+    }
+    // Flat-form fields on the group are a sign of the old (broken) format.
+    if ("command" in group || "type" in group)
+      fail(abs, `hooks.Stop[${i}] must NOT have flat "type"/"command" — wrap them in a nested "hooks" array`);
+    for (let j = 0; j < inner.length; j++) {
+      const h = inner[j];
+      if (!h || typeof h !== "object") { fail(abs, `hooks.Stop[${i}].hooks[${j}] must be an object`); continue; }
+      if (h.type !== "command") fail(abs, `hooks.Stop[${i}].hooks[${j}].type must be "command", got: ${JSON.stringify(h.type)}`);
+      if (typeof h.command !== "string" || !h.command) fail(abs, `hooks.Stop[${i}].hooks[${j}].command must be a non-empty string`);
+      else if (!h.command.includes("nolto")) fail(abs, `hooks.Stop[${i}].hooks[${j}].command must reference "nolto", got: ${JSON.stringify(h.command)}`);
+      if (h.timeout !== undefined && (typeof h.timeout !== "number" || h.timeout <= 0))
+        fail(abs, `hooks.Stop[${i}].hooks[${j}].timeout must be a positive number`);
     }
   }
 }
