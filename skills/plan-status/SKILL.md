@@ -64,7 +64,7 @@ mcp__nolto__get_plan({ planId: "<uuid>" })
 
 | エラー | 対処 |
 |--------|------|
-| `401 Unauthorized` | OAuth トークンが切れています。`claude mcp add --transport http nolto https://nolto.app/mcp` で再認証を促してください。 |
+| `401 Unauthorized` | 認証が切れています。**ヘッドレス環境では `nolto login --client claude`**（`@nolto/cli` >= 0.3.0）で再認証、デスクトップは Claude Code の MCP 設定で nolto を再認証するようユーザーに案内してください。 |
 | `429 Too Many Requests` | `Retry-After` ヘッダーの秒数だけ待ってから再試行します。 |
 | デフォルトプロジェクト未設定 | `list_projects` で一覧を表示し、`set_default_project` の設定を案内します。 |
 

@@ -41,7 +41,20 @@ claude plugin install nolto@nolto --scope project
 
 ## ヘッドレス / CI 環境
 
-SSH リモートやコンテナなど、ブラウザを開けない環境では Personal API Token を使ってください。
+SSH リモートやコンテナなど、ブラウザを開けない環境では、MCP の「Authenticate」ボタン（OAuth）は完了できません（開くブラウザがありません）。代わりに以下を使ってください。
+
+### 推奨: `nolto login`（device-code フロー）
+
+[`@nolto/cli`](https://www.npmjs.com/package/@nolto/cli)（>= 0.3.0）の `nolto login` は、**別の端末（スマホ・ラップトップ）のブラウザ**で承認するだけのヘッドレス向け認証です。トークンの手動コピーは不要です。
+
+```bash
+npm install -g @nolto/cli
+nolto login --client claude
+```
+
+表示された URL を任意の端末のブラウザで開いて承認すると、CLI が自動でトークンを取得し、`claude mcp add`（user scope）で `nolto` MCP サーバーを登録します。登録後、Claude Code を再接続すれば `nolto` ツールが使えます（プラグイン同梱の `plugin:nolto:nolto` は OAuth 前提なので、こちらの `nolto` サーバーを使ってください）。
+
+### 代替: Personal API Token を手動で渡す
 
 1. [設定 > API トークン](https://nolto.app/settings/tokens) でトークンを発行します。
 2. プロジェクトの `.mcp.json` またはシェルの設定ファイルに環境変数として設定します:
