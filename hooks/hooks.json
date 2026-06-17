@@ -6,11 +6,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "nolto flush --detach",
+            "command": "if command -v nolto >/dev/null 2>&1; then nolto flush --detach || true; else d=\"${XDG_CONFIG_HOME:-$HOME/.config}/nolto\"; if [ ! -f \"$d/.cli-hint-shown\" ]; then mkdir -p \"$d\" 2>/dev/null || true; : > \"$d/.cli-hint-shown\" 2>/dev/null || true; echo \"Nolto tip: install @nolto/cli (npm i -g @nolto/cli) to auto-send queued progress at session end. (shown once)\" >&2; fi; fi",
             "timeout": 10
           }
         ],
-        "description": "Flush queued Nolto progress updates at session end (non-blocking; exits 0 even on failure)."
+        "description": "Flush queued Nolto progress updates at session end. No-ops silently (with a one-time hint) when @nolto/cli is not installed; always exits 0 so it never blocks or errors the session."
       }
     ]
   }
