@@ -108,7 +108,7 @@ function checkPlugin() {
   if (!/^[a-z][a-z0-9-]*$/.test(d.name)) fail(f, `name must be kebab-case, got: ${JSON.stringify(d.name)}`);
   else if (d.name !== "nolto") fail(f, `name must be "nolto", got: "${d.name}"`);
   if (!/^\d+\.\d+\.\d+$/.test(d.version)) fail(f, `version must be semver, got: ${JSON.stringify(d.version)}`);
-  if (d.version !== "0.2.5") fail(f, `version must be "0.2.5", got: "${d.version}"`);
+  if (d.version !== "0.2.6") fail(f, `version must be "0.2.6", got: "${d.version}"`);
   for (const k of ["displayName", "description", "homepage", "repository", "license"])
     if (typeof d[k] !== "string" || !d[k]) fail(f, `${k} must be a non-empty string`);
   if (!d.author || typeof d.author !== "object") fail(f, "author must be an object");
@@ -134,7 +134,7 @@ function checkMarketplace() {
   const e = d.plugins[0];
   if (e.name !== "nolto") fail(f, `plugins[0].name must be "nolto"`);
   if (e.source !== "./") fail(f, `plugins[0].source must be "./"`);
-  if (e.version !== "0.2.5") fail(f, `plugins[0].version must be "0.2.5"`);
+  if (e.version !== "0.2.6") fail(f, `plugins[0].version must be "0.2.6"`);
   if (!e.description) fail(f, "plugins[0].description must be non-empty");
 }
 
